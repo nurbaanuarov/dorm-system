@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: dorm-system
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:dorm_system}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:NewPassword1234}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+app:
+  mail:
+    enabled: ${APP_MAIL_ENABLED:false}
+    from: ${APP_MAIL_FROM:no-reply@sdu-dorm.local}
+  bootstrap:
+    lead-admin:
+      email: ${LEAD_ADMIN_EMAIL:lead.admin@sdu.kz}
+      password: ${LEAD_ADMIN_PASSWORD:LeadAdmin123!}
+      name: ${LEAD_ADMIN_NAME:Lead}
+      surname: ${LEAD_ADMIN_SURNAME:Admin}
+    boys-admin:
+      email: ${BOYS_ADMIN_EMAIL:boys.admin@sdu.kz}
+      password: ${BOYS_ADMIN_PASSWORD:BoysAdmin123!}
+      name: ${BOYS_ADMIN_NAME:Boys}
+      surname: ${BOYS_ADMIN_SURNAME:Admin}
+    girls-admin:
+      email: ${GIRLS_ADMIN_EMAIL:girls.admin@sdu.kz}
+      password: ${GIRLS_ADMIN_PASSWORD:GirlsAdmin123!}
+      name: ${GIRLS_ADMIN_NAME:Girls}
+      surname: ${GIRLS_ADMIN_SURNAME:Admin}

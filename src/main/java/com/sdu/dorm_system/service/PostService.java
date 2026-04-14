@@ -1,0 +1,153 @@
+package com.sdu.dorm_system.service;
+
+import com.sdu.dorm_system.domain.PostComment;
+import com.sdu.dorm_system.domain.PostItem;
+import com.sdu.dorm_system.domain.PostPhoto;
+import com.sdu.dorm_system.domain.UserAccount;
+import com.sdu.dorm_system.domain.enums.Gender;
+import com.sdu.dorm_system.domain.enums.PostAudience;
+import com.sdu.dorm_system.domain.enums.Role;
+import com.sdu.dorm_system.exception.BusinessException;
+import com.sdu.dorm_system.repository.PostCommentRepository;
+import com.sdu.dorm_system.repository.PostItemRepository;
+import java.util.List;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class PostService {
+
+    private final PostItemRepository postItemRepository;
+    private final PostCommentRepository postCommentRepository;
+
+    @Transactional
+    public PostView createLeadPost(UserAccount actor, CreatePostCommand command) {
+        if (actor.getRole() != Role.LEAD_ADMIN) {
+            throw BusinessException.forbidden("Only the lead admin can create posts for all students");
+        }
+
+        return createPost(actor, command, PostAudience.ALL);
+    }
+
+    @Transactional
+    public PostView createGenderPost(UserAccount actor, CreatePostCommand command) {
+        PostAudience audience = switch (actor.getRole()) {
+            case BOYS_ADMIN -> PostAudience.BOYS;
+            case GIRLS_ADMIN -> PostAudience.GIRLS;
+            default -> throw BusinessException.forbidden("Only boys and girls admins can create gender-specific posts");
+        };
+
+        return createPost(actor, command, audience);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PostView> listVisiblePosts(UserAccount actor) {
+        return postItemRepository.findAllByAudienceInOrderByCreatedAtDesc(resolveAudiences(actor))
+            .stream()
+            .map(this::toView)
+            .toList();
+    }
+
+    @Transactional
+    public PostView addComment(UserAccount actor, UUID postId, String content) {
+        if (actor.getRole() != Role.STUDENT) {
+            throw BusinessException.forbidden("Only students can comment on posts");
+        }
+
+        PostItem postItem = postItemRepository.findById(postId)
+            .orElseThrow(() -> BusinessException.notFound("Post was not found"));
+
+        if (!resolveAudiences(actor).contains(postItem.getAudience())) {
+            throw BusinessException.forbidden("This post is not visible to the student");
+        }
+
+        PostComment comment = new PostComment();
+        comment.setPost(postItem);
+        comment.setStudent(actor);
+        comment.setContent(content.trim());
+        postCommentRepository.save(comment);
+
+        return toView(postItemRepository.findById(postId)
+            .orElseThrow(() -> BusinessException.notFound("Post was not found")));
+    }
+
+    private PostView createPost(UserAccount actor, CreatePostCommand command, PostAudience audience) {
+        PostItem postItem = new PostItem();
+        postItem.setTitle(command.title().trim());
+        postItem.setDescription(command.description().trim());
+        postItem.setAudience(audience);
+        postItem.setCreatedBy(actor);
+
+        int order = 0;
+        for (String photoUrl : command.photoUrls()) {
+            PostPhoto photo = new PostPhoto();
+            photo.setPost(postItem);
+            photo.setPhotoUrl(photoUrl.trim());
+            photo.setSortOrder(order++);
+            postItem.getPhotos().add(photo);
+        }
+
+        return toView(postItemRepository.save(postItem));
+    }
+
+    private List<PostAudience> resolveAudiences(UserAccount actor) {
+        return switch (actor.getRole()) {
+            case LEAD_ADMIN -> List.of(PostAudience.ALL, PostAudience.BOYS, PostAudience.GIRLS);
+            case BOYS_ADMIN -> List.of(PostAudience.ALL, PostAudience.BOYS);
+            case GIRLS_ADMIN -> List.of(PostAudience.ALL, PostAudience.GIRLS);
+            case STUDENT -> actor.getGender() == null || actor.getGender() == Gender.MALE
+                ? List.of(PostAudience.ALL, PostAudience.BOYS)
+                : List.of(PostAudience.ALL, PostAudience.GIRLS);
+        };
+    }
+
+    private PostView toView(PostItem postItem) {
+        return new PostView(
+            postItem.getId(),
+            postItem.getTitle(),
+            postItem.getDescription(),
+            postItem.getAudience(),
+            postItem.getPhotos().stream().map(PostPhoto::getPhotoUrl).toList(),
+            postItem.getCreatedAt(),
+            postItem.getCreatedBy().getName() + " " + postItem.getCreatedBy().getSurname(),
+            postItem.getComments().stream()
+                .map(comment -> new PostCommentView(
+                    comment.getId(),
+                    comment.getStudent().getName() + " " + comment.getStudent().getSurname(),
+                    comment.getContent(),
+                    comment.getCreatedAt()
+                ))
+                .toList()
+        );
+    }
+
+    public record CreatePostCommand(
+        String title,
+        String description,
+        List<String> photoUrls
+    ) {
+    }
+
+    public record PostView(
+        UUID id,
+        String title,
+        String description,
+        PostAudience audience,
+        List<String> photoUrls,
+        java.time.OffsetDateTime createdAt,
+        String createdBy,
+        List<PostCommentView> comments
+    ) {
+    }
+
+    public record PostCommentView(
+        UUID id,
+        String studentName,
+        String content,
+        java.time.OffsetDateTime createdAt
+    ) {
+    }
+}

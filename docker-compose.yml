@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: dorm-system-db
+    environment:
+      POSTGRES_DB: dorm_system
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: NewPassword1234
+    ports:
+      - "5432:5432"
+    volumes:
+      - dorm_system_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dorm_system"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dorm-system-app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: dorm_system
+      DB_USERNAME: postgres
+      DB_PASSWORD: NewPassword1234
+      APP_MAIL_ENABLED: "false"
+      LEAD_ADMIN_EMAIL: lead.admin@sdu.kz
+      LEAD_ADMIN_PASSWORD: LeadAdmin123!
+      LEAD_ADMIN_NAME: Lead
+      LEAD_ADMIN_SURNAME: Admin
+      BOYS_ADMIN_EMAIL: boys.admin@sdu.kz
+      BOYS_ADMIN_PASSWORD: BoysAdmin123!
+      BOYS_ADMIN_NAME: Boys
+      BOYS_ADMIN_SURNAME: Admin
+      GIRLS_ADMIN_EMAIL: girls.admin@sdu.kz
+      GIRLS_ADMIN_PASSWORD: GirlsAdmin123!
+      GIRLS_ADMIN_NAME: Girls
+      GIRLS_ADMIN_SURNAME: Admin
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  dorm_system_postgres_data:

@@ -6,8 +6,6 @@ services:
       POSTGRES_DB: dorm_system
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: NewPassword1234
-    ports:
-      - "5432:5432"
     volumes:
       - dorm_system_postgres_data:/var/lib/postgresql/data
     healthcheck:

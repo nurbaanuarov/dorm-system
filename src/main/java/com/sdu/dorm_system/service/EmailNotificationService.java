@@ -2,9 +2,11 @@ package com.sdu.dorm_system.service;
 
 import com.sdu.dorm_system.config.AppProperties;
 import com.sdu.dorm_system.domain.UserAccount;
+import com.sdu.dorm_system.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -46,6 +48,12 @@ public class EmailNotificationService implements NotificationService {
         message.setTo(user.getEmail());
         message.setSubject("SDU Dorm System account access");
         message.setText(messageText);
-        mailSender.send(message);
+
+        try {
+            mailSender.send(message);
+        } catch (MailException exception) {
+            log.error("Failed to send temporary password email to {}", user.getEmail(), exception);
+            throw BusinessException.badRequest("Failed to send email. Check the mail configuration and recipient address.");
+        }
     }
 }

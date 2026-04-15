@@ -14,6 +14,23 @@ spring:
         format_sql: true
   flyway:
     enabled: true
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    test-connection: ${MAIL_TEST_CONNECTION:false}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS_ENABLE:true}
+          ssl:
+            enable: ${MAIL_SMTP_SSL_ENABLE:false}
+          connectiontimeout: ${MAIL_SMTP_CONNECTION_TIMEOUT:5000}
+          timeout: ${MAIL_SMTP_TIMEOUT:5000}
+          writetimeout: ${MAIL_SMTP_WRITE_TIMEOUT:5000}
   servlet:
     multipart:
       max-file-size: 10MB
@@ -22,7 +39,7 @@ spring:
 app:
   mail:
     enabled: ${APP_MAIL_ENABLED:false}
-    from: ${APP_MAIL_FROM:no-reply@sdu-dorm.local}
+    from: ${APP_MAIL_FROM:${MAIL_USERNAME:no-reply@sdu-dorm.local}}
   bootstrap:
     lead-admin:
       email: ${LEAD_ADMIN_EMAIL:lead.admin@sdu.kz}

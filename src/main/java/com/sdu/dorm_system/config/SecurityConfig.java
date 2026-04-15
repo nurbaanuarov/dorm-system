@@ -5,6 +5,7 @@ import static org.springframework.security.config.Customizer.withDefaults;
 import com.sdu.dorm_system.repository.UserAccountRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -26,6 +27,7 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/error", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                 .requestMatchers("/api/lead-admin/**").hasRole("LEAD_ADMIN")
                 .requestMatchers("/api/admin/**").hasAnyRole("BOYS_ADMIN", "GIRLS_ADMIN")
                 .requestMatchers("/api/student/**").hasRole("STUDENT")

@@ -93,6 +93,12 @@ public final class ApiModels {
     ) {
     }
 
+    public record LoginRequest(
+        @NotBlank @Email String email,
+        @NotBlank String password
+    ) {
+    }
+
     public record UserResponse(
         UUID id,
         Role role,

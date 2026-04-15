@@ -14,6 +14,8 @@ import com.sdu.dorm_system.repository.RoomUnitRepository;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +30,7 @@ public class RoomService {
     private final DormRegistrationService dormRegistrationService;
 
     @Transactional(readOnly = true)
-    public List<RoomAvailability> listRoomsForStudent(UserAccount student, Block block, Integer floorNumber) {
+    public Page<RoomAvailability> listRoomsForStudent(UserAccount student, Block block, Integer floorNumber, Pageable pageable) {
         requireStudent(student);
         dormRegistrationService.ensureRoomRegistrationOpen();
         validateBlockForStudent(student, block);
@@ -40,7 +42,7 @@ public class RoomService {
             throw BusinessException.conflict("This floor is not active for student placement");
         }
 
-        return roomUnitRepository.findAllByBlockAndFloor(block, floorNumber)
+        List<RoomAvailability> rooms = roomUnitRepository.findAllByBlockAndFloor(block, floorNumber)
             .stream()
             .map(room -> {
                 long freeBeds = bedUnitRepository.findAllByRoomId(room.getId())
@@ -59,6 +61,8 @@ public class RoomService {
                 );
             })
             .toList();
+
+        return PaginationUtils.pageList(rooms, pageable);
     }
 
     @Transactional
@@ -128,8 +132,8 @@ public class RoomService {
     }
 
     @Transactional(readOnly = true)
-    public List<FloorUnit> listFloors() {
-        return floorUnitRepository.findAllByOrderByBlockAscFloorNumberAsc();
+    public Page<FloorUnit> listFloors(Pageable pageable) {
+        return PaginationUtils.pageList(floorUnitRepository.findAllByOrderByBlockAscFloorNumberAsc(), pageable);
     }
 
     private void requireStudent(UserAccount student) {

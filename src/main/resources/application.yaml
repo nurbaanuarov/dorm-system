@@ -45,3 +45,7 @@ app:
       service-key: ${SUPABASE_SERVICE_KEY:}
       bucket: ${SUPABASE_STORAGE_BUCKET:post-images}
       folder: ${SUPABASE_STORAGE_FOLDER:posts}
+  security:
+    jwt:
+      secret: ${JWT_SECRET:change-this-jwt-secret-for-production-please-1234567890}
+      expiration-minutes: ${JWT_EXPIRATION_MINUTES:1440}

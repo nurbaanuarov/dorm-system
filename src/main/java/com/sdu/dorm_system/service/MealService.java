@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -97,26 +99,28 @@ public class MealService {
     }
 
     @Transactional(readOnly = true)
-    public List<MealSlotView> listSlotsForAdmin(UserAccount admin, MealType mealType, LocalDate slotDate) {
+    public Page<MealSlotView> listSlotsForAdmin(UserAccount admin, MealType mealType, LocalDate slotDate, Pageable pageable) {
         Gender scope = resolveManagedGender(admin);
-        return mealSlotRepository.findAllByGenderScopeAndMealTypeAndSlotDateOrderByStartTimeAsc(scope, mealType, slotDate)
+        List<MealSlotView> slots = mealSlotRepository.findAllByGenderScopeAndMealTypeAndSlotDateOrderByStartTimeAsc(scope, mealType, slotDate)
             .stream()
             .map(slot -> toView(slot, mealBookingRepository.countBySlotId(slot.getId())))
             .toList();
+        return PaginationUtils.pageList(slots, pageable);
     }
 
     @Transactional(readOnly = true)
-    public List<MealSlotView> listSlotsForStudent(UserAccount student, MealType mealType, LocalDate slotDate) {
+    public Page<MealSlotView> listSlotsForStudent(UserAccount student, MealType mealType, LocalDate slotDate, Pageable pageable) {
         requireStudent(student);
 
         if (!mealPlanService.isMealTypeIncluded(student, mealType)) {
-            return List.of();
+            return Page.empty(pageable);
         }
 
-        return mealSlotRepository.findAllByGenderScopeAndMealTypeAndSlotDateOrderByStartTimeAsc(student.getGender(), mealType, slotDate)
+        List<MealSlotView> slots = mealSlotRepository.findAllByGenderScopeAndMealTypeAndSlotDateOrderByStartTimeAsc(student.getGender(), mealType, slotDate)
             .stream()
             .map(slot -> toView(slot, mealBookingRepository.countBySlotId(slot.getId())))
             .toList();
+        return PaginationUtils.pageList(slots, pageable);
     }
 
     @Transactional

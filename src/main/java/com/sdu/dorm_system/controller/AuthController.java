@@ -4,6 +4,7 @@ import com.sdu.dorm_system.domain.UserAccount;
 import com.sdu.dorm_system.domain.enums.Role;
 import com.sdu.dorm_system.service.AuthService;
 import com.sdu.dorm_system.service.CurrentUserService;
+import com.sdu.dorm_system.service.JwtTokenService;
 import com.sdu.dorm_system.service.RoomService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,17 +21,24 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final JwtTokenService jwtTokenService;
     private final CurrentUserService currentUserService;
     private final RoomService roomService;
 
     @PostMapping("/login")
-    public ApiModels.AuthenticatedUserResponse login(@Valid @RequestBody ApiModels.LoginRequest request) {
+    public ApiModels.LoginResponse login(@Valid @RequestBody ApiModels.LoginRequest request) {
         UserAccount currentUser = authService.authenticate(request.email(), request.password());
+        JwtTokenService.IssuedToken issuedToken = jwtTokenService.issueToken(currentUser);
         RoomService.RoomAssignment roomAssignment = currentUser.getRole() == Role.STUDENT
             ? roomService.getAssignment(currentUser)
             : null;
 
-        return ApiModels.toAuthenticatedUserResponse(currentUser, roomAssignment);
+        return new ApiModels.LoginResponse(
+            issuedToken.token(),
+            "Bearer",
+            issuedToken.expiresAt(),
+            ApiModels.toAuthenticatedUserResponse(currentUser, roomAssignment)
+        );
     }
 
     @GetMapping("/me")

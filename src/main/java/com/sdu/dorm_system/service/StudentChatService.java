@@ -9,6 +9,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,12 +21,10 @@ public class StudentChatService {
     private final GlobalChatMessageRepository globalChatMessageRepository;
 
     @Transactional(readOnly = true)
-    public List<ChatMessageView> listMessages(UserAccount actor) {
+    public Page<ChatMessageView> listMessages(UserAccount actor, Pageable pageable) {
         requireStudent(actor);
-        return globalChatMessageRepository.findAllByParentMessageIsNullOrderByCreatedAtDesc()
-            .stream()
-            .map(this::toView)
-            .toList();
+        return globalChatMessageRepository.findAllByParentMessageIsNull(pageable)
+            .map(this::toView);
     }
 
     @Transactional

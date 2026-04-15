@@ -3,6 +3,7 @@ package com.sdu.dorm_system.controller;
 import com.sdu.dorm_system.domain.UserAccount;
 import com.sdu.dorm_system.service.CurrentUserService;
 import com.sdu.dorm_system.service.DormRegistrationService;
+import com.sdu.dorm_system.service.PaginationUtils;
 import com.sdu.dorm_system.service.PostService;
 import com.sdu.dorm_system.service.PostImageStorageService;
 import com.sdu.dorm_system.service.RoomService;
@@ -12,6 +13,8 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.util.StringUtils;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -40,10 +44,12 @@ public class LeadAdminController {
     private final RoomService roomService;
 
     @GetMapping("/admins")
-    public List<ApiModels.UserResponse> listGenderAdmins() {
-        return userManagementService.listGenderAdmins().stream()
-            .map(ApiModels::toUserResponse)
-            .toList();
+    public ApiModels.PageResponse<ApiModels.UserResponse> listGenderAdmins(
+        @RequestParam(defaultValue = "0") Integer page,
+        @RequestParam(defaultValue = "20") Integer size
+    ) {
+        Pageable pageable = PaginationUtils.pageable(page, size, Sort.by(Sort.Direction.ASC, "role"));
+        return ApiModels.toPageResponse(userManagementService.listGenderAdmins(pageable), ApiModels::toUserResponse);
     }
 
     @PutMapping("/admins/{adminId}")
@@ -129,10 +135,12 @@ public class LeadAdminController {
     }
 
     @GetMapping("/floors")
-    public List<ApiModels.FloorResponse> listFloors() {
-        return roomService.listFloors().stream()
-            .map(ApiModels::toFloorResponse)
-            .toList();
+    public ApiModels.PageResponse<ApiModels.FloorResponse> listFloors(
+        @RequestParam(defaultValue = "0") Integer page,
+        @RequestParam(defaultValue = "20") Integer size
+    ) {
+        Pageable pageable = PaginationUtils.pageable(page, size, Sort.by(Sort.Direction.ASC, "block").ascending().and(Sort.by(Sort.Direction.ASC, "floorNumber")));
+        return ApiModels.toPageResponse(roomService.listFloors(pageable), ApiModels::toFloorResponse);
     }
 
     @PatchMapping("/floors/{floorId}")
@@ -199,9 +207,14 @@ public class LeadAdminController {
     }
 
     @GetMapping("/posts")
-    public List<PostService.PostView> listPosts(Authentication authentication) {
+    public ApiModels.PageResponse<PostService.PostView> listPosts(
+        @RequestParam(defaultValue = "0") Integer page,
+        @RequestParam(defaultValue = "20") Integer size,
+        Authentication authentication
+    ) {
         UserAccount actor = currentUserService.getCurrentUser(authentication);
-        return postService.listVisiblePosts(actor);
+        Pageable pageable = PaginationUtils.pageable(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return ApiModels.toPageResponse(postService.listVisiblePosts(actor, pageable));
     }
 
     @PostMapping("/posts/{postId}/comments")

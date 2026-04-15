@@ -10,7 +10,8 @@ import org.springframework.validation.annotation.Validated;
 public record AppProperties(
     MailProperties mail,
     BootstrapProperties bootstrap,
-    StorageProperties storage
+    StorageProperties storage,
+    SecurityProperties security
 ) {
 
     public record MailProperties(
@@ -44,6 +45,17 @@ public record AppProperties(
         String serviceKey,
         @NotBlank String bucket,
         String folder
+    ) {
+    }
+
+    public record SecurityProperties(
+        JwtProperties jwt
+    ) {
+    }
+
+    public record JwtProperties(
+        @NotBlank String secret,
+        long expirationMinutes
     ) {
     }
 }

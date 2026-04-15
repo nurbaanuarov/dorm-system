@@ -14,6 +14,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -46,11 +48,9 @@ public class PostService {
     }
 
     @Transactional(readOnly = true)
-    public List<PostView> listVisiblePosts(UserAccount actor) {
-        return postItemRepository.findAllByAudienceInOrderByCreatedAtDesc(resolveAudiences(actor))
-            .stream()
-            .map(this::toView)
-            .toList();
+    public Page<PostView> listVisiblePosts(UserAccount actor, Pageable pageable) {
+        return postItemRepository.findAllByAudienceIn(resolveAudiences(actor), pageable)
+            .map(this::toView);
     }
 
     @Transactional

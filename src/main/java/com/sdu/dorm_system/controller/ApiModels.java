@@ -20,6 +20,8 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Function;
+import org.springframework.data.domain.Page;
 
 public final class ApiModels {
 
@@ -81,6 +83,30 @@ public final class ApiModels {
         );
     }
 
+    public static <T> PageResponse<T> toPageResponse(Page<T> page) {
+        return new PageResponse<>(
+            page.getContent(),
+            page.getNumber(),
+            page.getSize(),
+            page.getTotalElements(),
+            page.getTotalPages(),
+            page.isFirst(),
+            page.isLast()
+        );
+    }
+
+    public static <T, R> PageResponse<R> toPageResponse(Page<T> page, Function<T, R> mapper) {
+        return new PageResponse<>(
+            page.getContent().stream().map(mapper).toList(),
+            page.getNumber(),
+            page.getSize(),
+            page.getTotalElements(),
+            page.getTotalPages(),
+            page.isFirst(),
+            page.isLast()
+        );
+    }
+
     public record AuthenticatedUserResponse(
         UUID id,
         Role role,
@@ -96,6 +122,14 @@ public final class ApiModels {
     public record LoginRequest(
         @NotBlank @Email String email,
         @NotBlank String password
+    ) {
+    }
+
+    public record LoginResponse(
+        String accessToken,
+        String tokenType,
+        java.time.OffsetDateTime expiresAt,
+        AuthenticatedUserResponse user
     ) {
     }
 
@@ -139,6 +173,17 @@ public final class ApiModels {
     public record ImportStudentsResponse(
         int importedCount,
         List<UserResponse> students
+    ) {
+    }
+
+    public record PageResponse<T>(
+        List<T> content,
+        int page,
+        int size,
+        long totalElements,
+        int totalPages,
+        boolean first,
+        boolean last
     ) {
     }
 

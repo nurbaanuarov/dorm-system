@@ -15,6 +15,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,14 +48,14 @@ public class MealPlanService {
     }
 
     @Transactional(readOnly = true)
-    public List<MealRegistrationRuleView> listRegistrationRulesForAdmin(UserAccount admin, LocalDate registrationDate) {
-        return listRegistrationRules(resolveManagedGender(admin), registrationDate);
+    public Page<MealRegistrationRuleView> listRegistrationRulesForAdmin(UserAccount admin, LocalDate registrationDate, Pageable pageable) {
+        return listRegistrationRules(resolveManagedGender(admin), registrationDate, pageable);
     }
 
     @Transactional(readOnly = true)
-    public List<MealRegistrationRuleView> listRegistrationRulesForStudent(UserAccount student, LocalDate registrationDate) {
+    public Page<MealRegistrationRuleView> listRegistrationRulesForStudent(UserAccount student, LocalDate registrationDate, Pageable pageable) {
         requireStudent(student);
-        return listRegistrationRules(requireStudentGender(student), registrationDate);
+        return listRegistrationRules(requireStudentGender(student), registrationDate, pageable);
     }
 
     @Transactional
@@ -103,17 +105,19 @@ public class MealPlanService {
         }
     }
 
-    private List<MealRegistrationRuleView> listRegistrationRules(Gender gender, LocalDate registrationDate) {
+    private Page<MealRegistrationRuleView> listRegistrationRules(Gender gender, LocalDate registrationDate, Pageable pageable) {
         List<MealRegistrationRule> existingRules = mealRegistrationRuleRepository
             .findAllByGenderScopeAndRegistrationDateOrderByMealTypeAsc(gender, registrationDate);
 
-        return Arrays.stream(MealType.values())
+        List<MealRegistrationRuleView> rules = Arrays.stream(MealType.values())
             .map(mealType -> existingRules.stream()
                 .filter(rule -> rule.getMealType() == mealType)
                 .findFirst()
                 .map(this::toView)
                 .orElse(new MealRegistrationRuleView(mealType, gender, registrationDate, true)))
             .toList();
+
+        return PaginationUtils.pageList(rules, pageable);
     }
 
     private Gender resolveManagedGender(UserAccount admin) {

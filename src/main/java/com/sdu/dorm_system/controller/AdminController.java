@@ -5,6 +5,7 @@ import com.sdu.dorm_system.domain.enums.MealType;
 import com.sdu.dorm_system.service.CurrentUserService;
 import com.sdu.dorm_system.service.MealService;
 import com.sdu.dorm_system.service.MealPlanService;
+import com.sdu.dorm_system.service.PaginationUtils;
 import com.sdu.dorm_system.service.PostService;
 import com.sdu.dorm_system.service.PostImageStorageService;
 import com.sdu.dorm_system.service.StudentImportService;
@@ -14,6 +15,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.Authentication;
 import org.springframework.http.MediaType;
@@ -123,30 +126,35 @@ public class AdminController {
     }
 
     @GetMapping("/meal-slots")
-    public List<MealService.MealSlotView> listMealSlots(
+    public ApiModels.PageResponse<MealService.MealSlotView> listMealSlots(
         @RequestParam MealType mealType,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate slotDate,
+        @RequestParam(defaultValue = "0") Integer page,
+        @RequestParam(defaultValue = "20") Integer size,
         Authentication authentication
     ) {
         UserAccount actor = currentUserService.getCurrentUser(authentication);
-        return mealService.listSlotsForAdmin(actor, mealType, slotDate);
+        Pageable pageable = PaginationUtils.pageable(page, size, Sort.by(Sort.Direction.ASC, "startTime"));
+        return ApiModels.toPageResponse(mealService.listSlotsForAdmin(actor, mealType, slotDate, pageable));
     }
 
     @GetMapping("/meal-registration-rules")
-    public List<ApiModels.MealRegistrationRuleResponse> listMealRegistrationRules(
+    public ApiModels.PageResponse<ApiModels.MealRegistrationRuleResponse> listMealRegistrationRules(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate registrationDate,
+        @RequestParam(defaultValue = "0") Integer page,
+        @RequestParam(defaultValue = "20") Integer size,
         Authentication authentication
     ) {
         UserAccount actor = currentUserService.getCurrentUser(authentication);
-        return mealPlanService.listRegistrationRulesForAdmin(actor, registrationDate)
-            .stream()
-            .map(rule -> new ApiModels.MealRegistrationRuleResponse(
+        Pageable pageable = PaginationUtils.pageable(page, size, Sort.by(Sort.Direction.ASC, "mealType"));
+        return ApiModels.toPageResponse(mealPlanService.listRegistrationRulesForAdmin(actor, registrationDate, pageable), rule ->
+            new ApiModels.MealRegistrationRuleResponse(
                 rule.mealType(),
                 rule.genderScope(),
                 rule.registrationDate(),
                 rule.active()
-            ))
-            .toList();
+            )
+        );
     }
 
     @PutMapping("/meal-registration-rules")
@@ -194,9 +202,14 @@ public class AdminController {
     }
 
     @GetMapping("/posts")
-    public List<PostService.PostView> listPosts(Authentication authentication) {
+    public ApiModels.PageResponse<PostService.PostView> listPosts(
+        @RequestParam(defaultValue = "0") Integer page,
+        @RequestParam(defaultValue = "20") Integer size,
+        Authentication authentication
+    ) {
         UserAccount actor = currentUserService.getCurrentUser(authentication);
-        return postService.listVisiblePosts(actor);
+        Pageable pageable = PaginationUtils.pageable(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return ApiModels.toPageResponse(postService.listVisiblePosts(actor, pageable));
     }
 
     @PostMapping("/posts/{postId}/comments")

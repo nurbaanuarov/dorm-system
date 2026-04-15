@@ -38,6 +38,10 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class AdminController {
 
+    private static final Sort STUDENT_SORT = Sort.by(Sort.Direction.ASC, "surname")
+        .and(Sort.by(Sort.Direction.ASC, "name"))
+        .and(Sort.by(Sort.Direction.ASC, "studentIdentifier"));
+
     private final CurrentUserService currentUserService;
     private final UserManagementService userManagementService;
     private final StudentImportService studentImportService;
@@ -45,6 +49,17 @@ public class AdminController {
     private final MealPlanService mealPlanService;
     private final PostService postService;
     private final PostImageStorageService postImageStorageService;
+
+    @GetMapping("/students")
+    public ApiModels.PageResponse<ApiModels.UserResponse> listStudents(
+        @RequestParam(defaultValue = "0") Integer page,
+        @RequestParam(defaultValue = "20") Integer size,
+        Authentication authentication
+    ) {
+        UserAccount actor = currentUserService.getCurrentUser(authentication);
+        Pageable pageable = PaginationUtils.pageable(page, size, STUDENT_SORT);
+        return ApiModels.toPageResponse(userManagementService.listStudents(actor, pageable), ApiModels::toUserResponse);
+    }
 
     @PostMapping("/students")
     public ApiModels.UserResponse createStudent(

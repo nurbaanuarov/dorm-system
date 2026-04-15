@@ -38,6 +38,19 @@ public class UserManagementService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public Page<UserAccount> listStudents(UserAccount actor, Pageable pageable) {
+        if (actor.getRole() == Role.LEAD_ADMIN) {
+            return userAccountRepository.findByRole(Role.STUDENT, pageable);
+        }
+
+        if (actor.getRole().isGenderAdmin()) {
+            return userAccountRepository.findByRoleAndGender(Role.STUDENT, actor.getRole().managedGender(), pageable);
+        }
+
+        throw BusinessException.forbidden("Only dorm admins can view the students list");
+    }
+
     @Transactional
     public void ensureBootstrapAdmin(Role role, AppProperties.AdminSeed seed) {
         userAccountRepository.findByEmailIgnoreCase(seed.email())

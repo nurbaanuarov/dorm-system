@@ -52,6 +52,21 @@ public class LeadAdminController {
         return ApiModels.toPageResponse(userManagementService.listGenderAdmins(pageable), ApiModels::toUserResponse);
     }
 
+    @GetMapping("/students")
+    public ApiModels.PageResponse<ApiModels.UserResponse> listStudents(
+        @RequestParam(defaultValue = "0") Integer page,
+        @RequestParam(defaultValue = "20") Integer size,
+        Authentication authentication
+    ) {
+        UserAccount actor = currentUserService.getCurrentUser(authentication);
+        Pageable pageable = PaginationUtils.pageable(
+            page,
+            size,
+            Sort.by(Sort.Direction.ASC, "surname").and(Sort.by(Sort.Direction.ASC, "name")).and(Sort.by(Sort.Direction.ASC, "studentIdentifier"))
+        );
+        return ApiModels.toPageResponse(userManagementService.listStudents(actor, pageable), ApiModels::toUserResponse);
+    }
+
     @PutMapping("/admins/{adminId}")
     public ApiModels.UserResponse updateGenderAdmin(
         @PathVariable UUID adminId,

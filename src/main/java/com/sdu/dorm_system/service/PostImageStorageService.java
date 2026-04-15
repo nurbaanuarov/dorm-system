@@ -76,6 +76,17 @@ public class PostImageStorageService {
         );
     }
 
+    public List<String> storePostImages(List<MultipartFile> files) {
+        if (files == null || files.isEmpty()) {
+            return List.of();
+        }
+
+        return files.stream()
+            .filter(file -> file != null && !file.isEmpty())
+            .map(file -> storePostImage(file).publicUrl())
+            .toList();
+    }
+
     private AppProperties.SupabaseProperties requireSupabaseConfig() {
         AppProperties.SupabaseProperties supabase = appProperties.storage().supabase();
         if (supabase == null

@@ -16,6 +16,8 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.Authentication;
+import org.springframework.http.MediaType;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -176,14 +178,19 @@ public class AdminController {
         Authentication authentication
     ) {
         UserAccount actor = currentUserService.getCurrentUser(authentication);
-        return postService.createGenderPost(
-            actor,
-            new PostService.CreatePostCommand(
-                request.title(),
-                request.description(),
-                request.photoUrls() == null ? List.of() : request.photoUrls()
-            )
-        );
+        return createGenderPost(actor, request.title(), request.description(), request.photoUrls(), List.of());
+    }
+
+    @PostMapping(path = "/posts", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public PostService.PostView createPostWithImages(
+        @RequestPart("title") String title,
+        @RequestPart("description") String description,
+        @RequestPart(value = "photoUrls", required = false) List<String> photoUrls,
+        @RequestPart(value = "files", required = false) List<MultipartFile> files,
+        Authentication authentication
+    ) {
+        UserAccount actor = currentUserService.getCurrentUser(authentication);
+        return createGenderPost(actor, title, description, photoUrls, files);
     }
 
     @GetMapping("/posts")
@@ -200,5 +207,31 @@ public class AdminController {
     ) {
         UserAccount actor = currentUserService.getCurrentUser(authentication);
         return postService.addComment(actor, postId, new PostService.AddCommentCommand(request.content(), request.parentCommentId()));
+    }
+
+    private PostService.PostView createGenderPost(
+        UserAccount actor,
+        String title,
+        String description,
+        List<String> photoUrls,
+        List<MultipartFile> files
+    ) {
+        List<String> uploadedPhotoUrls = postImageStorageService.storePostImages(files);
+        List<String> mergedPhotoUrls = mergePhotoUrls(photoUrls, uploadedPhotoUrls);
+        return postService.createGenderPost(
+            actor,
+            new PostService.CreatePostCommand(title, description, mergedPhotoUrls)
+        );
+    }
+
+    private List<String> mergePhotoUrls(List<String> photoUrls, List<String> uploadedPhotoUrls) {
+        List<String> existingUrls = photoUrls == null ? List.of() : photoUrls.stream()
+            .filter(StringUtils::hasText)
+            .map(String::trim)
+            .toList();
+        if (uploadedPhotoUrls == null || uploadedPhotoUrls.isEmpty()) {
+            return existingUrls;
+        }
+        return java.util.stream.Stream.concat(existingUrls.stream(), uploadedPhotoUrls.stream()).toList();
     }
 }

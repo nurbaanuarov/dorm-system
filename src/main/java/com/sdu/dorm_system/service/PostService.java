@@ -16,6 +16,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -70,16 +71,16 @@ public class PostService {
 
     private PostView createPost(UserAccount actor, CreatePostCommand command, PostAudience audience) {
         PostItem postItem = new PostItem();
-        postItem.setTitle(command.title().trim());
-        postItem.setDescription(command.description().trim());
+        postItem.setTitle(normalizeRequiredText(command.title(), "Post title is required"));
+        postItem.setDescription(normalizeRequiredText(command.description(), "Post description is required"));
         postItem.setAudience(audience);
         postItem.setCreatedBy(actor);
 
         int order = 0;
-        for (String photoUrl : command.photoUrls()) {
+        for (String photoUrl : normalizePhotoUrls(command.photoUrls())) {
             PostPhoto photo = new PostPhoto();
             photo.setPost(postItem);
-            photo.setPhotoUrl(photoUrl.trim());
+            photo.setPhotoUrl(photoUrl);
             photo.setSortOrder(order++);
             postItem.getPhotos().add(photo);
         }
@@ -111,6 +112,24 @@ public class PostService {
         }
 
         return parentComment;
+    }
+
+    private String normalizeRequiredText(String value, String message) {
+        if (!StringUtils.hasText(value)) {
+            throw BusinessException.badRequest(message);
+        }
+        return value.trim();
+    }
+
+    private List<String> normalizePhotoUrls(List<String> photoUrls) {
+        if (photoUrls == null || photoUrls.isEmpty()) {
+            return List.of();
+        }
+
+        return photoUrls.stream()
+            .filter(StringUtils::hasText)
+            .map(String::trim)
+            .toList();
     }
 
     private List<PostAudience> resolveAudiences(UserAccount actor) {

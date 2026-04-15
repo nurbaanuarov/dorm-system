@@ -16,24 +16,20 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(name = "post_comment")
-public class PostComment extends BaseEntity {
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "post_id", nullable = false)
-    private PostItem post;
+@Table(name = "global_chat_message")
+public class GlobalChatMessage extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "author_user_id", nullable = false)
     private UserAccount author;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_comment_id")
-    private PostComment parentComment;
+    @JoinColumn(name = "parent_message_id")
+    private GlobalChatMessage parentMessage;
 
-    @OneToMany(mappedBy = "parentComment")
+    @OneToMany(mappedBy = "parentMessage")
     @OrderBy("createdAt ASC")
-    private List<PostComment> replies = new ArrayList<>();
+    private List<GlobalChatMessage> replies = new ArrayList<>();
 
     @Column(nullable = false, length = 2000)
     private String content;

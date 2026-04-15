@@ -4,6 +4,7 @@ import com.sdu.dorm_system.domain.UserAccount;
 import com.sdu.dorm_system.service.CurrentUserService;
 import com.sdu.dorm_system.service.DormRegistrationService;
 import com.sdu.dorm_system.service.PostService;
+import com.sdu.dorm_system.service.PostImageStorageService;
 import com.sdu.dorm_system.service.RoomService;
 import com.sdu.dorm_system.service.StudentImportService;
 import com.sdu.dorm_system.service.UserManagementService;
@@ -33,6 +34,7 @@ public class LeadAdminController {
     private final StudentImportService studentImportService;
     private final DormRegistrationService dormRegistrationService;
     private final PostService postService;
+    private final PostImageStorageService postImageStorageService;
     private final RoomService roomService;
 
     @GetMapping("/admins")
@@ -108,6 +110,22 @@ public class LeadAdminController {
         return new ApiModels.ImportStudentsResponse(students.size(), students);
     }
 
+    @PostMapping("/post-images")
+    public ApiModels.UploadedFileResponse uploadPostImage(
+        @RequestPart("file") MultipartFile file,
+        Authentication authentication
+    ) {
+        currentUserService.getCurrentUser(authentication);
+        PostImageStorageService.StoredImage storedImage = postImageStorageService.storePostImage(file);
+
+        return new ApiModels.UploadedFileResponse(
+            storedImage.fileName(),
+            storedImage.publicUrl(),
+            storedImage.contentType(),
+            storedImage.size()
+        );
+    }
+
     @GetMapping("/floors")
     public List<ApiModels.FloorResponse> listFloors() {
         return roomService.listFloors().stream()
@@ -171,5 +189,21 @@ public class LeadAdminController {
                 request.photoUrls() == null ? List.of() : request.photoUrls()
             )
         );
+    }
+
+    @GetMapping("/posts")
+    public List<PostService.PostView> listPosts(Authentication authentication) {
+        UserAccount actor = currentUserService.getCurrentUser(authentication);
+        return postService.listVisiblePosts(actor);
+    }
+
+    @PostMapping("/posts/{postId}/comments")
+    public PostService.PostView addComment(
+        @PathVariable UUID postId,
+        @Valid @RequestBody ApiModels.CommentRequest request,
+        Authentication authentication
+    ) {
+        UserAccount actor = currentUserService.getCurrentUser(authentication);
+        return postService.addComment(actor, postId, new PostService.AddCommentCommand(request.content(), request.parentCommentId()));
     }
 }

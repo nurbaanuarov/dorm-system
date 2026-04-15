@@ -136,6 +136,14 @@ public final class ApiModels {
     ) {
     }
 
+    public record UploadedFileResponse(
+        String fileName,
+        String url,
+        String contentType,
+        long size
+    ) {
+    }
+
     public record FloorUpdateRequest(
         @NotNull Boolean active
     ) {
@@ -157,7 +165,14 @@ public final class ApiModels {
     }
 
     public record CommentRequest(
-        @NotBlank @Size(max = 2000) String content
+        @NotBlank @Size(max = 2000) String content,
+        UUID parentCommentId
+    ) {
+    }
+
+    public record ChatMessageRequest(
+        @NotBlank @Size(max = 2000) String content,
+        UUID parentMessageId
     ) {
     }
 

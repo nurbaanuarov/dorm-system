@@ -29,6 +29,10 @@ services:
       DB_NAME: dorm_system
       DB_USERNAME: postgres
       DB_PASSWORD: NewPassword1234
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-}
+      SUPABASE_STORAGE_BUCKET: ${SUPABASE_STORAGE_BUCKET:-post-images}
+      SUPABASE_STORAGE_FOLDER: ${SUPABASE_STORAGE_FOLDER:-posts}
       APP_MAIL_ENABLED: "false"
       LEAD_ADMIN_EMAIL: lead.admin@sdu.kz
       LEAD_ADMIN_PASSWORD: LeadAdmin123!

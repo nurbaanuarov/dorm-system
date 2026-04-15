@@ -9,6 +9,7 @@ import com.sdu.dorm_system.service.MealService;
 import com.sdu.dorm_system.service.MealPlanService;
 import com.sdu.dorm_system.service.PostService;
 import com.sdu.dorm_system.service.RoomService;
+import com.sdu.dorm_system.service.StudentChatService;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
@@ -35,6 +36,7 @@ public class StudentController {
     private final MealService mealService;
     private final MealPlanService mealPlanService;
     private final PostService postService;
+    private final StudentChatService studentChatService;
 
     @GetMapping("/rooms")
     public List<RoomService.RoomAvailability> listRooms(
@@ -130,6 +132,24 @@ public class StudentController {
         Authentication authentication
     ) {
         UserAccount actor = currentUserService.getCurrentUser(authentication);
-        return postService.addComment(actor, postId, request.content());
+        return postService.addComment(actor, postId, new PostService.AddCommentCommand(request.content(), request.parentCommentId()));
+    }
+
+    @GetMapping("/global-chat/messages")
+    public List<StudentChatService.ChatMessageView> listGlobalChatMessages(Authentication authentication) {
+        UserAccount actor = currentUserService.getCurrentUser(authentication);
+        return studentChatService.listMessages(actor);
+    }
+
+    @PostMapping("/global-chat/messages")
+    public StudentChatService.ChatMessageView addGlobalChatMessage(
+        @Valid @RequestBody ApiModels.ChatMessageRequest request,
+        Authentication authentication
+    ) {
+        UserAccount actor = currentUserService.getCurrentUser(authentication);
+        return studentChatService.addMessage(
+            actor,
+            new StudentChatService.CreateChatMessageCommand(request.content(), request.parentMessageId())
+        );
     }
 }

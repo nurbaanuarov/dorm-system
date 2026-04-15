@@ -9,7 +9,8 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(
     MailProperties mail,
-    BootstrapProperties bootstrap
+    BootstrapProperties bootstrap,
+    StorageProperties storage
 ) {
 
     public record MailProperties(
@@ -30,6 +31,19 @@ public record AppProperties(
         @NotBlank String password,
         @NotBlank String name,
         @NotBlank String surname
+    ) {
+    }
+
+    public record StorageProperties(
+        SupabaseProperties supabase
+    ) {
+    }
+
+    public record SupabaseProperties(
+        String url,
+        String serviceKey,
+        @NotBlank String bucket,
+        String folder
     ) {
     }
 }

@@ -10,6 +10,7 @@ import com.sdu.dorm_system.domain.enums.Role;
 import com.sdu.dorm_system.exception.BusinessException;
 import com.sdu.dorm_system.repository.PostCommentRepository;
 import com.sdu.dorm_system.repository.PostItemRepository;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -52,22 +53,15 @@ public class PostService {
     }
 
     @Transactional
-    public PostView addComment(UserAccount actor, UUID postId, String content) {
-        if (actor.getRole() != Role.STUDENT) {
-            throw BusinessException.forbidden("Only students can comment on posts");
-        }
-
-        PostItem postItem = postItemRepository.findById(postId)
-            .orElseThrow(() -> BusinessException.notFound("Post was not found"));
-
-        if (!resolveAudiences(actor).contains(postItem.getAudience())) {
-            throw BusinessException.forbidden("This post is not visible to the student");
-        }
+    public PostView addComment(UserAccount actor, UUID postId, AddCommentCommand command) {
+        PostItem postItem = getVisiblePost(actor, postId);
+        PostComment parentComment = resolveParentComment(postItem, command.parentCommentId());
 
         PostComment comment = new PostComment();
         comment.setPost(postItem);
-        comment.setStudent(actor);
-        comment.setContent(content.trim());
+        comment.setAuthor(actor);
+        comment.setParentComment(parentComment);
+        comment.setContent(command.content().trim());
         postCommentRepository.save(comment);
 
         return toView(postItemRepository.findById(postId)
@@ -93,6 +87,32 @@ public class PostService {
         return toView(postItemRepository.save(postItem));
     }
 
+    private PostItem getVisiblePost(UserAccount actor, UUID postId) {
+        PostItem postItem = postItemRepository.findById(postId)
+            .orElseThrow(() -> BusinessException.notFound("Post was not found"));
+
+        if (!resolveAudiences(actor).contains(postItem.getAudience())) {
+            throw BusinessException.forbidden("This post is not visible to the current user");
+        }
+
+        return postItem;
+    }
+
+    private PostComment resolveParentComment(PostItem postItem, UUID parentCommentId) {
+        if (parentCommentId == null) {
+            return null;
+        }
+
+        PostComment parentComment = postCommentRepository.findById(parentCommentId)
+            .orElseThrow(() -> BusinessException.notFound("Parent comment was not found"));
+
+        if (!parentComment.getPost().getId().equals(postItem.getId())) {
+            throw BusinessException.badRequest("Parent comment must belong to the same post");
+        }
+
+        return parentComment;
+    }
+
     private List<PostAudience> resolveAudiences(UserAccount actor) {
         return switch (actor.getRole()) {
             case LEAD_ADMIN -> List.of(PostAudience.ALL, PostAudience.BOYS, PostAudience.GIRLS);
@@ -114,12 +134,24 @@ public class PostService {
             postItem.getCreatedAt(),
             postItem.getCreatedBy().getName() + " " + postItem.getCreatedBy().getSurname(),
             postItem.getComments().stream()
-                .map(comment -> new PostCommentView(
-                    comment.getId(),
-                    comment.getStudent().getName() + " " + comment.getStudent().getSurname(),
-                    comment.getContent(),
-                    comment.getCreatedAt()
-                ))
+                .filter(comment -> comment.getParentComment() == null)
+                .sorted(Comparator.comparing(PostComment::getCreatedAt).reversed())
+                .map(this::toCommentView)
+                .toList()
+        );
+    }
+
+    private PostCommentView toCommentView(PostComment comment) {
+        return new PostCommentView(
+            comment.getId(),
+            comment.getParentComment() == null ? null : comment.getParentComment().getId(),
+            comment.getAuthor().getName() + " " + comment.getAuthor().getSurname(),
+            comment.getAuthor().getRole(),
+            comment.getContent(),
+            comment.getCreatedAt(),
+            comment.getReplies().stream()
+                .sorted(Comparator.comparing(PostComment::getCreatedAt))
+                .map(this::toCommentView)
                 .toList()
         );
     }
@@ -128,6 +160,12 @@ public class PostService {
         String title,
         String description,
         List<String> photoUrls
+    ) {
+    }
+
+    public record AddCommentCommand(
+        String content,
+        UUID parentCommentId
     ) {
     }
 
@@ -145,9 +183,12 @@ public class PostService {
 
     public record PostCommentView(
         UUID id,
-        String studentName,
+        UUID parentCommentId,
+        String authorName,
+        Role authorRole,
         String content,
-        java.time.OffsetDateTime createdAt
+        java.time.OffsetDateTime createdAt,
+        List<PostCommentView> replies
     ) {
     }
 }

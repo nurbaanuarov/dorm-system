@@ -39,3 +39,9 @@ app:
       password: ${GIRLS_ADMIN_PASSWORD:GirlsAdmin123!}
       name: ${GIRLS_ADMIN_NAME:Girls}
       surname: ${GIRLS_ADMIN_SURNAME:Admin}
+  storage:
+    supabase:
+      url: ${SUPABASE_URL:}
+      service-key: ${SUPABASE_SERVICE_KEY:}
+      bucket: ${SUPABASE_STORAGE_BUCKET:post-images}
+      folder: ${SUPABASE_STORAGE_FOLDER:posts}

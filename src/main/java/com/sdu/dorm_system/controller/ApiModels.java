@@ -6,7 +6,9 @@ import com.sdu.dorm_system.domain.enums.Block;
 import com.sdu.dorm_system.domain.enums.Gender;
 import com.sdu.dorm_system.domain.enums.MealType;
 import com.sdu.dorm_system.domain.enums.Role;
+import com.sdu.dorm_system.service.DormRegistrationService;
 import com.sdu.dorm_system.service.RoomService;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -60,6 +62,23 @@ public final class ApiModels {
 
     public static FloorResponse toFloorResponse(FloorUnit floorUnit) {
         return new FloorResponse(floorUnit.getId(), floorUnit.getBlock(), floorUnit.getFloorNumber(), floorUnit.isActive());
+    }
+
+    public static DormRegistrationSettingsResponse toDormRegistrationSettingsResponse(
+        DormRegistrationService.DormRegistrationSettingsView settings
+    ) {
+        return new DormRegistrationSettingsResponse(
+            settings.startDate(),
+            settings.endDate(),
+            settings.activeNow(),
+            settings.mealOptions().stream()
+                .map(option -> new DormRegistrationMealOptionResponse(
+                    option.mealType(),
+                    option.available(),
+                    option.includedInPrice()
+                ))
+                .toList()
+        );
     }
 
     public record AuthenticatedUserResponse(
@@ -172,6 +191,35 @@ public final class ApiModels {
         Gender genderScope,
         LocalDate registrationDate,
         boolean active
+    ) {
+    }
+
+    public record DormRegistrationMealOptionRequest(
+        @NotNull MealType mealType,
+        @NotNull Boolean available,
+        @NotNull Boolean includedInPrice
+    ) {
+    }
+
+    public record DormRegistrationSettingsRequest(
+        @NotNull LocalDate startDate,
+        @NotNull LocalDate endDate,
+        List<@Valid DormRegistrationMealOptionRequest> mealOptions
+    ) {
+    }
+
+    public record DormRegistrationMealOptionResponse(
+        MealType mealType,
+        boolean available,
+        boolean includedInPrice
+    ) {
+    }
+
+    public record DormRegistrationSettingsResponse(
+        LocalDate startDate,
+        LocalDate endDate,
+        boolean activeNow,
+        List<DormRegistrationMealOptionResponse> mealOptions
     ) {
     }
 

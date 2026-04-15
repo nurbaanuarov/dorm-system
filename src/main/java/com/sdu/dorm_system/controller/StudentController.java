@@ -4,6 +4,7 @@ import com.sdu.dorm_system.domain.UserAccount;
 import com.sdu.dorm_system.domain.enums.Block;
 import com.sdu.dorm_system.domain.enums.MealType;
 import com.sdu.dorm_system.service.CurrentUserService;
+import com.sdu.dorm_system.service.DormRegistrationService;
 import com.sdu.dorm_system.service.MealService;
 import com.sdu.dorm_system.service.MealPlanService;
 import com.sdu.dorm_system.service.PostService;
@@ -30,6 +31,7 @@ public class StudentController {
 
     private final CurrentUserService currentUserService;
     private final RoomService roomService;
+    private final DormRegistrationService dormRegistrationService;
     private final MealService mealService;
     private final MealPlanService mealPlanService;
     private final PostService postService;
@@ -71,6 +73,12 @@ public class StudentController {
                 assignment.bedNumber(),
                 assignment.mealTypesIncludedInPrice()
             );
+    }
+
+    @GetMapping("/dorm-registration-settings")
+    public ApiModels.DormRegistrationSettingsResponse getDormRegistrationSettings() {
+        DormRegistrationService.DormRegistrationSettingsView settings = dormRegistrationService.getSettings();
+        return settings == null ? null : ApiModels.toDormRegistrationSettingsResponse(settings);
     }
 
     @GetMapping("/meal-registration-rules")

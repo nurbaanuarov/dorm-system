@@ -2,6 +2,7 @@ package com.sdu.dorm_system.controller;
 
 import com.sdu.dorm_system.domain.UserAccount;
 import com.sdu.dorm_system.service.CurrentUserService;
+import com.sdu.dorm_system.service.DormRegistrationService;
 import com.sdu.dorm_system.service.PostService;
 import com.sdu.dorm_system.service.RoomService;
 import com.sdu.dorm_system.service.StudentImportService;
@@ -30,6 +31,7 @@ public class LeadAdminController {
     private final CurrentUserService currentUserService;
     private final UserManagementService userManagementService;
     private final StudentImportService studentImportService;
+    private final DormRegistrationService dormRegistrationService;
     private final PostService postService;
     private final RoomService roomService;
 
@@ -121,6 +123,38 @@ public class LeadAdminController {
     ) {
         UserAccount actor = currentUserService.getCurrentUser(authentication);
         return ApiModels.toFloorResponse(roomService.updateFloorActiveStatus(actor, floorId, request.active()));
+    }
+
+    @GetMapping("/dorm-registration-settings")
+    public ApiModels.DormRegistrationSettingsResponse getDormRegistrationSettings() {
+        DormRegistrationService.DormRegistrationSettingsView settings = dormRegistrationService.getSettings();
+        return settings == null ? null : ApiModels.toDormRegistrationSettingsResponse(settings);
+    }
+
+    @PutMapping("/dorm-registration-settings")
+    public ApiModels.DormRegistrationSettingsResponse upsertDormRegistrationSettings(
+        @Valid @RequestBody ApiModels.DormRegistrationSettingsRequest request,
+        Authentication authentication
+    ) {
+        UserAccount actor = currentUserService.getCurrentUser(authentication);
+        DormRegistrationService.DormRegistrationSettingsView settings = dormRegistrationService.upsertSettings(
+            actor,
+            new DormRegistrationService.UpsertDormRegistrationSettingsCommand(
+                request.startDate(),
+                request.endDate(),
+                request.mealOptions() == null
+                    ? List.of()
+                    : request.mealOptions().stream()
+                        .map(option -> new DormRegistrationService.MealAvailabilityCommand(
+                            option.mealType(),
+                            option.available(),
+                            option.includedInPrice()
+                        ))
+                        .toList()
+            )
+        );
+
+        return ApiModels.toDormRegistrationSettingsResponse(settings);
     }
 
     @PostMapping("/posts")

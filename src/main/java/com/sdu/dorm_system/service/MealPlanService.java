@@ -57,22 +57,12 @@ public class MealPlanService {
     }
 
     @Transactional
-    public List<MealType> replaceStudentMealPlan(UserAccount student, List<MealType> selectedMealTypes, LocalDate registrationDate) {
+    public List<MealType> replaceStudentMealPlan(UserAccount student, List<MealType> selectedMealTypes) {
         requireStudent(student);
 
         Set<MealType> normalizedMealTypes = selectedMealTypes == null
             ? Set.of()
             : new LinkedHashSet<>(selectedMealTypes);
-        Gender studentGender = requireStudentGender(student);
-
-        for (MealType mealType : normalizedMealTypes) {
-            if (!isRegistrationActive(studentGender, mealType, registrationDate)) {
-                throw BusinessException.conflict(
-                    "The " + mealType.name().toLowerCase() + " meal type is not active for "
-                        + studentGender.name().toLowerCase() + " students on " + registrationDate
-                );
-            }
-        }
 
         studentMealPlanRepository.deleteAllByStudentId(student.getId());
 
@@ -124,13 +114,6 @@ public class MealPlanService {
                 .map(this::toView)
                 .orElse(new MealRegistrationRuleView(mealType, gender, registrationDate, true)))
             .toList();
-    }
-
-    private boolean isRegistrationActive(Gender gender, MealType mealType, LocalDate registrationDate) {
-        return mealRegistrationRuleRepository
-            .findByGenderScopeAndMealTypeAndRegistrationDate(gender, mealType, registrationDate)
-            .map(MealRegistrationRule::isActive)
-            .orElse(true);
     }
 
     private Gender resolveManagedGender(UserAccount admin) {

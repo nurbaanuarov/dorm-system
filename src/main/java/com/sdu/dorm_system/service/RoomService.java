@@ -11,7 +11,6 @@ import com.sdu.dorm_system.exception.BusinessException;
 import com.sdu.dorm_system.repository.BedUnitRepository;
 import com.sdu.dorm_system.repository.FloorUnitRepository;
 import com.sdu.dorm_system.repository.RoomUnitRepository;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -26,10 +25,12 @@ public class RoomService {
     private final RoomUnitRepository roomUnitRepository;
     private final BedUnitRepository bedUnitRepository;
     private final MealPlanService mealPlanService;
+    private final DormRegistrationService dormRegistrationService;
 
     @Transactional(readOnly = true)
     public List<RoomAvailability> listRoomsForStudent(UserAccount student, Block block, Integer floorNumber) {
         requireStudent(student);
+        dormRegistrationService.ensureRoomRegistrationOpen();
         validateBlockForStudent(student, block);
 
         FloorUnit floorUnit = floorUnitRepository.findByBlockAndFloorNumber(block, floorNumber)
@@ -63,6 +64,8 @@ public class RoomService {
     @Transactional
     public RoomAssignment assignRoom(UserAccount student, UUID roomId, List<MealType> selectedMealTypes) {
         requireStudent(student);
+        DormRegistrationService.ResolvedMealSelection resolvedMealSelection =
+            dormRegistrationService.resolveMealSelectionForRoomRegistration(selectedMealTypes);
 
         if (bedUnitRepository.findByOccupantId(student.getId()).isPresent()) {
             throw BusinessException.conflict("The student already has an assigned room");
@@ -82,7 +85,8 @@ public class RoomService {
 
         bed.setOccupant(student);
         BedUnit savedBed = bedUnitRepository.save(bed);
-        List<MealType> mealTypesIncludedInPrice = mealPlanService.replaceStudentMealPlan(student, selectedMealTypes, LocalDate.now());
+        List<MealType> mealTypesIncludedInPrice =
+            mealPlanService.replaceStudentMealPlan(student, resolvedMealSelection.finalMealTypesIncludedInPrice());
 
         return new RoomAssignment(
             room.getId(),

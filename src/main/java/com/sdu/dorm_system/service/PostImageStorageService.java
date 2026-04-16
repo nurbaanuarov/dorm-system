@@ -16,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -64,6 +65,8 @@ public class PostImageStorageService {
                 .toBodilessEntity();
         } catch (IOException exception) {
             throw BusinessException.conflict("Image file could not be read");
+        } catch (ResourceAccessException exception) {
+            throw BusinessException.conflict("Supabase Storage could not be reached. Check SUPABASE_URL and your internet connection.");
         } catch (RestClientResponseException exception) {
             throw mapUploadException(exception);
         }
@@ -123,8 +126,10 @@ public class PostImageStorageService {
                 if (exception.getStatusCode().value() == 404) {
                     createPublicBucket(supabase);
                 } else {
-                    throw BusinessException.conflict("Supabase bucket could not be checked");
+                    throw mapBucketException("checked", exception);
                 }
+            } catch (ResourceAccessException exception) {
+                throw BusinessException.conflict("Supabase Storage could not be reached. Check SUPABASE_URL and your internet connection.");
             }
 
             bucketEnsured.set(true);
@@ -151,8 +156,10 @@ public class PostImageStorageService {
                 ))
                 .retrieve()
                 .toBodilessEntity();
+        } catch (ResourceAccessException exception) {
+            throw BusinessException.conflict("Supabase Storage could not be reached. Check SUPABASE_URL and your internet connection.");
         } catch (RestClientResponseException exception) {
-            throw BusinessException.conflict("Supabase bucket could not be created");
+            throw mapBucketException("created", exception);
         }
     }
 
@@ -166,8 +173,10 @@ public class PostImageStorageService {
                 .body(Map.of("public", true))
                 .retrieve()
                 .toBodilessEntity();
+        } catch (ResourceAccessException exception) {
+            throw BusinessException.conflict("Supabase Storage could not be reached. Check SUPABASE_URL and your internet connection.");
         } catch (RestClientResponseException exception) {
-            throw BusinessException.conflict("Supabase bucket could not be updated");
+            throw mapBucketException("updated", exception);
         }
     }
 
@@ -242,12 +251,36 @@ public class PostImageStorageService {
 
     private BusinessException mapUploadException(RestClientResponseException exception) {
         if (exception.getStatusCode().value() == 400) {
-            return BusinessException.badRequest("Supabase rejected the uploaded image");
+            return BusinessException.badRequest("Supabase rejected the uploaded image" + formatSupabaseErrorDetails(exception));
         }
         if (exception.getStatusCode().value() == 401 || exception.getStatusCode().value() == 403) {
-            return BusinessException.conflict("Supabase credentials are invalid for image upload");
+            return BusinessException.conflict("Supabase credentials are invalid for image upload" + formatSupabaseErrorDetails(exception));
         }
-        return BusinessException.conflict("Supabase image upload failed");
+        return BusinessException.conflict("Supabase image upload failed" + formatSupabaseErrorDetails(exception));
+    }
+
+    private BusinessException mapBucketException(String action, RestClientResponseException exception) {
+        if (exception.getStatusCode().value() == 401 || exception.getStatusCode().value() == 403) {
+            return BusinessException.conflict("Supabase credentials are invalid for bucket access" + formatSupabaseErrorDetails(exception));
+        }
+        if (exception.getStatusCode().value() == 400) {
+            return BusinessException.conflict("Supabase bucket request was rejected" + formatSupabaseErrorDetails(exception));
+        }
+        return BusinessException.conflict("Supabase bucket could not be " + action + formatSupabaseErrorDetails(exception));
+    }
+
+    private String formatSupabaseErrorDetails(RestClientResponseException exception) {
+        String responseBody = exception.getResponseBodyAsString();
+        if (!StringUtils.hasText(responseBody)) {
+            return " (HTTP " + exception.getStatusCode().value() + ")";
+        }
+
+        String normalized = responseBody.replace('\n', ' ').replace('\r', ' ').trim();
+        if (normalized.length() > 200) {
+            normalized = normalized.substring(0, 200) + "...";
+        }
+
+        return " (HTTP " + exception.getStatusCode().value() + ": " + normalized + ")";
     }
 
     public record StoredImage(

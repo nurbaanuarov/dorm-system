@@ -69,21 +69,24 @@ public class PostService {
             .orElseThrow(() -> BusinessException.notFound("Post was not found")));
     }
 
+    @Transactional
+    public PostView updatePost(UserAccount actor, UUID postId, CreatePostCommand command) {
+        PostItem postItem = getManageablePost(actor, postId);
+        applyPostContent(postItem, command);
+        return toView(postItemRepository.save(postItem));
+    }
+
+    @Transactional
+    public void deletePost(UserAccount actor, UUID postId) {
+        PostItem postItem = getManageablePost(actor, postId);
+        postItemRepository.delete(postItem);
+    }
+
     private PostView createPost(UserAccount actor, CreatePostCommand command, PostAudience audience) {
         PostItem postItem = new PostItem();
-        postItem.setTitle(normalizeRequiredText(command.title(), "Post title is required"));
-        postItem.setDescription(normalizeRequiredText(command.description(), "Post description is required"));
         postItem.setAudience(audience);
         postItem.setCreatedBy(actor);
-
-        int order = 0;
-        for (String photoUrl : normalizePhotoUrls(command.photoUrls())) {
-            PostPhoto photo = new PostPhoto();
-            photo.setPost(postItem);
-            photo.setPhotoUrl(photoUrl);
-            photo.setSortOrder(order++);
-            postItem.getPhotos().add(photo);
-        }
+        applyPostContent(postItem, command);
 
         return toView(postItemRepository.save(postItem));
     }
@@ -97,6 +100,36 @@ public class PostService {
         }
 
         return postItem;
+    }
+
+    private PostItem getManageablePost(UserAccount actor, UUID postId) {
+        PostItem postItem = postItemRepository.findById(postId)
+            .orElseThrow(() -> BusinessException.notFound("Post was not found"));
+
+        if (actor.getRole() == Role.LEAD_ADMIN) {
+            return postItem;
+        }
+
+        if (actor.getRole().isGenderAdmin() && postItem.getCreatedBy().getId().equals(actor.getId())) {
+            return postItem;
+        }
+
+        throw BusinessException.forbidden("You can edit or delete only posts you created");
+    }
+
+    private void applyPostContent(PostItem postItem, CreatePostCommand command) {
+        postItem.setTitle(normalizeRequiredText(command.title(), "Post title is required"));
+        postItem.setDescription(normalizeRequiredText(command.description(), "Post description is required"));
+        postItem.getPhotos().clear();
+
+        int order = 0;
+        for (String photoUrl : normalizePhotoUrls(command.photoUrls())) {
+            PostPhoto photo = new PostPhoto();
+            photo.setPost(postItem);
+            photo.setPhotoUrl(photoUrl);
+            photo.setSortOrder(order++);
+            postItem.getPhotos().add(photo);
+        }
     }
 
     private PostComment resolveParentComment(PostItem postItem, UUID parentCommentId) {

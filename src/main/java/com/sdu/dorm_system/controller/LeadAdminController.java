@@ -18,6 +18,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -221,6 +222,29 @@ public class LeadAdminController {
         return createLeadPost(actor, title, description, photoUrls, files);
     }
 
+    @PutMapping("/posts/{postId}")
+    public PostService.PostView updatePost(
+        @PathVariable UUID postId,
+        @Valid @RequestBody ApiModels.CreatePostRequest request,
+        Authentication authentication
+    ) {
+        UserAccount actor = currentUserService.getCurrentUser(authentication);
+        return updatePost(actor, postId, request.title(), request.description(), request.photoUrls(), List.of());
+    }
+
+    @PutMapping(path = "/posts/{postId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public PostService.PostView updatePostWithImages(
+        @PathVariable UUID postId,
+        @RequestPart("title") String title,
+        @RequestPart("description") String description,
+        @RequestPart(value = "photoUrls", required = false) List<String> photoUrls,
+        @RequestPart(value = "files", required = false) List<MultipartFile> files,
+        Authentication authentication
+    ) {
+        UserAccount actor = currentUserService.getCurrentUser(authentication);
+        return updatePost(actor, postId, title, description, photoUrls, files);
+    }
+
     @GetMapping("/posts")
     public ApiModels.PageResponse<PostService.PostView> listPosts(
         @RequestParam(defaultValue = "0") Integer page,
@@ -242,6 +266,15 @@ public class LeadAdminController {
         return postService.addComment(actor, postId, new PostService.AddCommentCommand(request.content(), request.parentCommentId()));
     }
 
+    @DeleteMapping("/posts/{postId}")
+    public void deletePost(
+        @PathVariable UUID postId,
+        Authentication authentication
+    ) {
+        UserAccount actor = currentUserService.getCurrentUser(authentication);
+        postService.deletePost(actor, postId);
+    }
+
     private PostService.PostView createLeadPost(
         UserAccount actor,
         String title,
@@ -253,6 +286,23 @@ public class LeadAdminController {
         List<String> mergedPhotoUrls = mergePhotoUrls(photoUrls, uploadedPhotoUrls);
         return postService.createLeadPost(
             actor,
+            new PostService.CreatePostCommand(title, description, mergedPhotoUrls)
+        );
+    }
+
+    private PostService.PostView updatePost(
+        UserAccount actor,
+        UUID postId,
+        String title,
+        String description,
+        List<String> photoUrls,
+        List<MultipartFile> files
+    ) {
+        List<String> uploadedPhotoUrls = postImageStorageService.storePostImages(files);
+        List<String> mergedPhotoUrls = mergePhotoUrls(photoUrls, uploadedPhotoUrls);
+        return postService.updatePost(
+            actor,
+            postId,
             new PostService.CreatePostCommand(title, description, mergedPhotoUrls)
         );
     }

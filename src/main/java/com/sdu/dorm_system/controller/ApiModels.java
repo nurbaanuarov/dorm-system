@@ -125,11 +125,23 @@ public final class ApiModels {
     ) {
     }
 
+    public record ChangePasswordRequest(
+        @NotBlank String password,
+        @NotBlank @Size(min = 8, max = 100) String newPassword,
+        @NotBlank @Size(min = 8, max = 100) String repeatNewPassword
+    ) {
+    }
+
     public record LoginResponse(
         String accessToken,
         String tokenType,
         java.time.OffsetDateTime expiresAt,
         AuthenticatedUserResponse user
+    ) {
+    }
+
+    public record MessageResponse(
+        String message
     ) {
     }
 

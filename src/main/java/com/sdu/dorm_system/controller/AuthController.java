@@ -41,6 +41,20 @@ public class AuthController {
         );
     }
 
+    @PostMapping("/change-password")
+    public ApiModels.MessageResponse changePassword(
+        @Valid @RequestBody ApiModels.ChangePasswordRequest request,
+        Authentication authentication
+    ) {
+        UserAccount currentUser = currentUserService.getCurrentUser(authentication);
+        authService.changePassword(currentUser, new AuthService.ChangePasswordCommand(
+            request.password(),
+            request.newPassword(),
+            request.repeatNewPassword()
+        ));
+        return new ApiModels.MessageResponse("Password was changed successfully");
+    }
+
     @GetMapping("/me")
     public ApiModels.AuthenticatedUserResponse me(Authentication authentication) {
         UserAccount currentUser = currentUserService.getCurrentUser(authentication);

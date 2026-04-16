@@ -31,4 +31,39 @@ public class AuthService {
 
         return user;
     }
+
+    @Transactional
+    public void changePassword(UserAccount user, ChangePasswordCommand command) {
+        if (user == null || !user.isEnabled()) {
+            throw BusinessException.unauthorized("Authenticated user was not found");
+        }
+
+        if (!StringUtils.hasText(command.password())
+            || !StringUtils.hasText(command.newPassword())
+            || !StringUtils.hasText(command.repeatNewPassword())) {
+            throw BusinessException.badRequest("All password fields are required");
+        }
+
+        if (!passwordEncoder.matches(command.password(), user.getPasswordHash())) {
+            throw BusinessException.badRequest("Current password is incorrect");
+        }
+
+        if (!command.newPassword().equals(command.repeatNewPassword())) {
+            throw BusinessException.badRequest("New password fields do not match");
+        }
+
+        if (command.password().equals(command.newPassword())) {
+            throw BusinessException.badRequest("New password must be different from the current password");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(command.newPassword()));
+        userAccountRepository.save(user);
+    }
+
+    public record ChangePasswordCommand(
+        String password,
+        String newPassword,
+        String repeatNewPassword
+    ) {
+    }
 }

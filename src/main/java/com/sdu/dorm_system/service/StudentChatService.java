@@ -9,6 +9,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class StudentChatService {
 
     private final GlobalChatMessageRepository globalChatMessageRepository;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Transactional(readOnly = true)
     public Page<ChatMessageView> listMessages(UserAccount actor, Pageable pageable) {
@@ -38,6 +40,8 @@ public class StudentChatService {
         message.setParentMessage(parentMessage);
         message.setContent(command.content().trim());
         globalChatMessageRepository.save(message);
+
+        applicationEventPublisher.publishEvent(new ChatMessageCreatedEvent(toSocketEvent(message)));
 
         return toView(resolveRootMessage(message));
     }
@@ -63,6 +67,24 @@ public class StudentChatService {
             current = current.getParentMessage();
         }
         return current;
+    }
+
+    private UUID resolveRootMessageId(GlobalChatMessage message) {
+        return resolveRootMessage(message).getId();
+    }
+
+    private ChatSocketEvent toSocketEvent(GlobalChatMessage message) {
+        return new ChatSocketEvent(
+            message.getParentMessage() == null ? "new_message" : "reply",
+            new ChatSocketMessage(
+                message.getId(),
+                message.getParentMessage() == null ? null : message.getParentMessage().getId(),
+                resolveRootMessageId(message),
+                message.getAuthor().getName() + " " + message.getAuthor().getSurname(),
+                message.getContent(),
+                message.getCreatedAt()
+            )
+        );
     }
 
     private ChatMessageView toView(GlobalChatMessage message) {
@@ -92,6 +114,27 @@ public class StudentChatService {
         String content,
         java.time.OffsetDateTime createdAt,
         List<ChatMessageView> replies
+    ) {
+    }
+
+    public record ChatSocketEvent(
+        String eventType,
+        ChatSocketMessage message
+    ) {
+    }
+
+    public record ChatSocketMessage(
+        UUID id,
+        UUID parentMessageId,
+        UUID rootMessageId,
+        String authorName,
+        String content,
+        java.time.OffsetDateTime createdAt
+    ) {
+    }
+
+    public record ChatMessageCreatedEvent(
+        ChatSocketEvent event
     ) {
     }
 }

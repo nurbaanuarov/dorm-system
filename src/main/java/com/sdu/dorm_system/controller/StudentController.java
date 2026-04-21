@@ -21,6 +21,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -128,6 +129,15 @@ public class StudentController {
     ) {
         UserAccount actor = currentUserService.getCurrentUser(authentication);
         return mealService.bookSlot(actor, slotId);
+    }
+
+    @DeleteMapping("/meal-bookings/{slotId}")
+    public MealService.MealSlotView cancelMealSlot(
+        @PathVariable UUID slotId,
+        Authentication authentication
+    ) {
+        UserAccount actor = currentUserService.getCurrentUser(authentication);
+        return mealService.cancelBooking(actor, slotId);
     }
 
     @GetMapping("/posts")

@@ -155,6 +155,24 @@ public class MealService {
         return toView(slot, bookedCount + 1);
     }
 
+    @Transactional
+    public MealSlotView cancelBooking(UserAccount student, UUID slotId) {
+        requireStudent(student);
+
+        MealBooking booking = mealBookingRepository.findByStudentIdAndSlotId(student.getId(), slotId)
+            .orElseThrow(() -> BusinessException.notFound("Meal booking was not found"));
+
+        MealSlot slot = booking.getSlot();
+        if (!canCancel(slot)) {
+            throw BusinessException.conflict("This meal booking can no longer be cancelled");
+        }
+
+        mealBookingRepository.delete(booking);
+        mealBookingRepository.flush();
+
+        return toView(slot, mealBookingRepository.countBySlotId(slot.getId()));
+    }
+
     private Gender resolveManagedGender(UserAccount admin) {
         if (!admin.getRole().isGenderAdmin()) {
             throw BusinessException.forbidden("Only boys and girls admins can manage meal slots");
@@ -174,8 +192,13 @@ public class MealService {
             return false;
         }
 
-        LocalDateTime bookingCutoff = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime()).minusMinutes(20);
+        LocalDateTime bookingCutoff = LocalDateTime.of(slot.getSlotDate(), slot.getEndTime()).minusMinutes(15);
         return !LocalDateTime.now().isAfter(bookingCutoff);
+    }
+
+    private boolean canCancel(MealSlot slot) {
+        LocalDateTime cancellationCutoff = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime()).minusHours(1);
+        return !LocalDateTime.now().isAfter(cancellationCutoff);
     }
 
     private MealSlotView toView(MealSlot slot, long bookedCount) {
